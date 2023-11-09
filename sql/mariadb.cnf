@@ -1,0 +1,5 @@
+[mysqld]
+max_connections = 100
+bind-address            = 0.0.0.0
+binlog_format = ROW
+log_bin = /var/log/mysql/mysql-bin.log
