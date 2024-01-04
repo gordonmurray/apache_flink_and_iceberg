@@ -4,8 +4,6 @@ CREATE CATALOG s3_catalog WITH (
     'type' = 'iceberg',
     'catalog-type' = 'hadoop',
     'warehouse' = 's3a://my-test-bucket/iceberg',
-    's3a.access-key' = 'xxxxx',
-    's3a.secret-key' = 'xxxxxx',
     'property-version' = '1'
 );
 
