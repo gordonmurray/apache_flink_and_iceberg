@@ -36,8 +36,11 @@ Assuming duckdb is installed, provide it with AWS details:
 SET s3_region='us-east-1';
 SET s3_access_key_id='AKAIXXXXXXXXXXXX';
 SET s3_secret_access_key='XXXXXXXXXXXX';
+```
 
+Then you can query one or more parquet files using:
 
+```
 SELECT * FROM 's3://my-test-bucket/iceberg/my_database/my_products/data/00000-0-b3a04103-6ef1-49fa-9c7b-62194183c3fd-00001.parquet';
 ```
 
