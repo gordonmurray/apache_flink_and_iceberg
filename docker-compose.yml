@@ -12,12 +12,12 @@ services:
       - "3306:3306"
 
   jobmanager:
-    image: flink:1.17.1
+    image: flink:1.18.0
     container_name: jobmanager
     environment:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
-      - AWS_ACCESS_KEY_ID=xxxxx
-      - AWS_SECRET_ACCESS_KEY=xxxxx
+      - AWS_ACCESS_KEY_ID=
+      - AWS_SECRET_ACCESS_KEY=
     ports:
       - "8081:8081"
     command: jobmanager
@@ -34,11 +34,11 @@ services:
     deploy:
           replicas: 1
   taskmanager:
-    image: flink:1.17.1
+    image: flink:1.18.0
     environment:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
-      - AWS_ACCESS_KEY_ID=xxxxx
-      - AWS_SECRET_ACCESS_KEY=xxxxx
+      - AWS_ACCESS_KEY_ID=
+      - AWS_SECRET_ACCESS_KEY=
     depends_on:
       - jobmanager
     command: taskmanager
