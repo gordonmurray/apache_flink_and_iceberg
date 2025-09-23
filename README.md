@@ -18,6 +18,8 @@ A data pipeline demonstrating Change Data Capture (CDC) from MariaDB to Apache I
 - Docker Compose orchestration
 - Custom Flink image with embedded connectors
 
+![Flink UI](flink.png)
+
 ## Quick Start
 
 1. **Start the services:**
