@@ -1,13 +1,13 @@
 USE CATALOG default_catalog;
 
-CREATE CATALOG s3_catalog WITH (
+CREATE CATALOG minio_catalog WITH (
     'type' = 'iceberg',
     'catalog-type' = 'hadoop',
-    'warehouse' = 's3a://my-test-bucket/iceberg',
+    'warehouse' = 's3a://iceberg/warehouse',
     'property-version' = '1'
 );
 
-USE CATALOG s3_catalog;
+USE CATALOG minio_catalog;
 
 CREATE DATABASE IF NOT EXISTS my_database;
 
@@ -28,7 +28,6 @@ create temporary table products (
     PRIMARY KEY (id) NOT ENFORCED
 ) WITH (
     'connector' = 'mysql-cdc',
-    'connection.pool.size' = '10',
     'hostname' = 'mariadb',
     'port' = '3306',
     'username' = 'root',
@@ -37,6 +36,6 @@ create temporary table products (
     'table-name' = 'products'
 );
 
-SET 'execution.checkpointing.interval' = '60 s';
+SET 'execution.checkpointing.interval' = '3s';
 
 INSERT INTO my_products (id,name,price) SELECT id, name,price FROM products;
