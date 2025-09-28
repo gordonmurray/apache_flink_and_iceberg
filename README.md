@@ -1,141 +1,339 @@
-# Apache Flink + Iceberg + MinIO CDC Pipeline
+# 🚀 Modern Data Lakehouse Stack with Apache Flink, Iceberg, and Friends
 
-A data pipeline demonstrating Change Data Capture (CDC) from MariaDB to Apache Iceberg tables stored in MinIO (S3-compatible storage).
+A production-ready data lakehouse architecture demonstrating real-time CDC, data quality, SQL analytics, and visualization capabilities. This project showcases the integration of cutting-edge data technologies in a fully containerized environment.
 
-## Architecture
+## 🎯 What This Project Does
 
-- **Apache Flink 1.19.3** - Stream processing framework
-- **Apache Iceberg 1.6.1** - Modern data lake table format
-- **MinIO** - S3-compatible object storage
-- **MariaDB 10.6.14** - Source database with sample data
-- **MySQL CDC 3.1.0** - Change data capture connector
+This stack implements a complete data lakehouse pipeline that:
+- **Captures changes** from MariaDB in real-time using CDC (Change Data Capture)
+- **Streams data** through Apache Flink for processing
+- **Stores data** in Apache Iceberg tables on MinIO (S3-compatible storage)
+- **Ensures quality** with automated Soda Core data quality checks
+- **Enables analytics** via Trino SQL query engine
+- **Visualizes insights** through Apache Superset dashboards
+- **Centralizes logging** with Loki, Promtail, and Grafana
 
-## Features
+## 🏗️ Architecture
 
-- Real-time CDC from MariaDB to Iceberg tables
-- Parquet file format with Iceberg metadata
-- Self-contained with MinIO
-- Docker Compose orchestration
-- Custom Flink image with embedded connectors
+```mermaid
+graph TB
+    MariaDB[MariaDB<br/>Source Database] -->|CDC| Flink[Apache Flink<br/>Stream Processing]
+    Flink -->|Write| Iceberg[Apache Iceberg<br/>Table Format]
+    Iceberg -->|Store| MinIO[MinIO<br/>Object Storage]
 
-![Flink UI](flink.png)
+    Iceberg --> Trino[Trino<br/>SQL Engine]
+    Trino --> Superset[Apache Superset<br/>Visualization]
+    Trino --> Soda[Soda Core<br/>Data Quality]
 
-## Quick Start
+    All[All Services] -->|Logs| Promtail[Promtail<br/>Log Collector]
+    Promtail --> Loki[Loki<br/>Log Aggregation]
+    Loki --> Grafana[Grafana<br/>Log Visualization]
+```
 
-1. **Start the services:**
-   ```bash
-   docker compose up -d
-   ```
+## 📦 Components
 
-2. **Wait for services to be ready (30 seconds), then submit the CDC job:**
-   ```bash
-   docker exec jobmanager /opt/flink/bin/sql-client.sh -f /opt/flink/job.sql
-   ```
+### Core Data Pipeline
+- **Apache Flink 1.19.3**: Distributed stream processing framework
+- **Apache Iceberg 1.6.1**: Modern table format for huge analytic datasets
+- **MinIO**: High-performance S3-compatible object storage
+- **MariaDB 10.6.14**: Source database with CDC enabled
 
-3. **Access the interfaces:**
-   - Flink Web UI: http://localhost:8081
-   - MinIO Console: http://localhost:9001 (admin/password123)
+### Analytics & Visualization
+- **Trino 435**: Fast distributed SQL query engine for big data
+- **Apache Superset 3.0.0**: Modern data exploration and visualization platform
+- **Soda Core**: Automated data quality monitoring and testing
 
-## Verification
+### Observability
+- **Grafana 10.0.0**: Visualization and analytics platform
+- **Loki 2.9.0**: Log aggregation system inspired by Prometheus
+- **Promtail 2.9.0**: Agent for shipping logs to Loki
 
-### Check job status:
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- Python 3.8+ (for Superset dashboard creation)
+- 16GB RAM recommended
+- 20GB free disk space
+
+### 1. Start the Stack
+
 ```bash
-curl http://localhost:8081/jobs | jq .
+# Clone the repository
+git clone <your-repo-url>
+cd apache_flink_and_iceberg
+
+# Start all services with one command
+./startup.sh
 ```
 
-### Query the Iceberg table:
+This will:
+- Start all Docker containers
+- Wait for services to initialize
+- Submit the Flink CDC job automatically
+
+### 2. Create Superset Dashboard
+
+After services are running (about 1-2 minutes):
+
 ```bash
-docker exec jobmanager /opt/flink/bin/sql-client.sh -f /opt/flink/test_complete.sql
+python3 superset/create_dashboard.py
 ```
 
-Expected output:
-```
-+----+-------------+--------------------------------+--------------+
-| op |          id |                           name |        price |
-+----+-------------+--------------------------------+--------------+
-| +I |           3 |                      Product C |        39.99 |
-| +I |           2 |                      Product B |        29.99 |
-| +I |           1 |                      Product A |        19.99 |
-+----+-------------+--------------------------------+--------------+
-```
+## 🌐 Access Points
 
-### Verify MinIO storage:
+| Service | URL | Credentials | Purpose |
+|---------|-----|-------------|---------|
+| **Flink Web UI** | http://localhost:8081 | - | Monitor streaming jobs |
+| **MinIO Console** | http://localhost:9001 | admin/password123 | Browse object storage |
+| **Superset** | http://localhost:8088 | admin/admin | Data visualization |
+| **Trino UI** | http://localhost:8082 | - | Query execution monitoring |
+| **Grafana** | http://localhost:3000 | admin/admin | Log exploration |
+
+## 🔍 Usage Examples
+
+### Query Data with Trino
+
 ```bash
-docker exec minio mc ls -r local/iceberg/warehouse/my_database/my_products/
+docker exec -it trino trino
+
+# In Trino CLI:
+SHOW CATALOGS;
+USE iceberg.my_database;
+SHOW TABLES;
+SELECT * FROM my_products;
+SELECT COUNT(*) as product_count, AVG(price) as avg_price FROM my_products;
 ```
 
-## Data Flow
+### Check Data Quality
 
-1. **Source**: MariaDB `products` table with sample data
-2. **CDC**: MySQL CDC connector captures changes in real-time
-3. **Processing**: Flink processes the change stream
-4. **Sink**: Data written to Iceberg table in MinIO storage
-5. **Query**: Table queryable via Flink SQL
+View automated data quality scan results:
 
-## Configuration
-
-The pipeline uses the following key configurations:
-
-- **MinIO Endpoint**: `http://minio:9000`
-- **Iceberg Warehouse**: `s3a://iceberg/warehouse`
-- **CDC Database**: `mydatabase.products`
-- **Target Table**: `minio_catalog.my_database.my_products`
-
-## Troubleshooting
-
-### Services not starting:
 ```bash
+docker logs soda
+```
+
+### Explore Logs in Grafana
+
+1. Open http://localhost:3000 (admin/admin)
+2. Navigate to Explore
+3. Select Loki datasource
+4. Example queries:
+   - `{service="jobmanager"}` - Flink JobManager logs
+   - `{container="superset"}` - Superset logs
+   - `{service=~".*"} |= "ERROR"` - All errors across services
+
+### Add Data to Source
+
+Insert new products to see real-time CDC:
+
+```bash
+docker exec mariadb mysql -u root -prootpassword -e "
+  USE mydatabase;
+  INSERT INTO products (name, price) VALUES
+    ('Product D', 49.99),
+    ('Product E', 59.99);
+"
+```
+
+Then query in Trino to see the new data reflected immediately.
+
+## 📊 Data Flow Demonstration
+
+1. **Source Data**: MariaDB contains a `products` table
+2. **CDC Capture**: MySQL CDC connector captures all changes
+3. **Stream Processing**: Flink processes the change stream
+4. **Storage**: Data written to Iceberg tables in MinIO
+5. **Analytics**: Trino provides SQL interface to Iceberg data
+6. **Quality Checks**: Soda runs automated quality scans every 5 minutes
+7. **Visualization**: Superset dashboards show real-time metrics
+8. **Monitoring**: All service logs centralized in Grafana
+
+## 🛠️ Advanced Configuration
+
+### Customize Data Quality Checks
+
+Edit `soda/checks.yml` to add custom quality rules:
+
+```yaml
+checks for my_products:
+  - row_count > 10:
+      name: Minimum products threshold
+  - avg(price) < 1000:
+      name: Price sanity check
+```
+
+### Scale Flink Workers
+
+Modify `docker-compose.yml`:
+
+```yaml
+taskmanager:
+  deploy:
+    replicas: 4  # Increase for more parallelism
+```
+
+### Add Trino Catalogs
+
+Create new catalog files in `trino/catalog/` to connect additional data sources.
+
+## 📁 Project Structure
+
+```
+.
+├── docker-compose.yml          # Service orchestration
+├── Dockerfile                  # Custom Flink image
+├── startup.sh                  # One-command startup script
+├── Claude.md                   # Development progress tracking
+├── jobs/
+│   ├── job.sql                # Main CDC pipeline
+│   └── test_complete.sql      # Verification queries
+├── sql/
+│   ├── init.sql              # MariaDB sample data
+│   └── mariadb.cnf           # MariaDB configuration
+├── soda/
+│   ├── configuration.yml     # Soda data source config
+│   └── checks.yml           # Data quality rules
+├── trino/
+│   └── catalog/             # Trino catalog configurations
+├── superset/
+│   ├── superset_config.py  # Superset configuration
+│   ├── init_superset.sh    # Database initialization
+│   └── create_dashboard.py # Dashboard automation
+├── loki/
+│   └── config.yml          # Loki configuration
+├── promtail/
+│   └── config.yml          # Log collection config
+└── grafana/
+    └── datasources/        # Grafana data sources
+```
+
+## 🔧 Troubleshooting
+
+### Services Not Starting
+
+```bash
+# Check service status
 docker compose ps
+
+# View logs for specific service
 docker compose logs [service-name]
+
+# Restart a specific service
+docker compose restart [service-name]
 ```
 
-### CDC connection issues:
-```bash
-# Check MariaDB
-docker exec apache_flink_and_iceberg-mariadb-1 mysql -u root -prootpassword -e "SELECT * FROM mydatabase.products;"
+### Flink Job Issues
 
-# Check Flink logs
+```bash
+# Check job status
+curl http://localhost:8081/jobs | jq .
+
+# View Flink logs
 docker logs jobmanager
 ```
 
-### MinIO access issues:
+### Data Not Appearing
+
 ```bash
-# Configure MinIO client
-docker exec minio mc alias set local http://localhost:9000 admin password123
-docker exec minio mc ls local/
+# Verify MariaDB data
+docker exec mariadb mysql -u root -prootpassword -e "SELECT * FROM mydatabase.products;"
+
+# Check MinIO storage
+docker exec minio mc ls -r local/iceberg/warehouse/
 ```
 
-## Project Structure
+### Reset Everything
 
-```
-├── docker-compose.yml          # Service orchestration
-├── Dockerfile                  # Custom Flink image with connectors
-├── hadoop-core-site.xml        # Hadoop S3A configuration for MinIO
-├── flink-config.yaml          # Flink configuration with S3 settings
-├── jobs/
-│   ├── job.sql                # Main CDC pipeline job
-│   ├── simple_test.sql        # Simple CDC test
-│   └── test_complete.sql      # End-to-end verification query
-└── sql/
-    ├── init.sql               # MariaDB sample data
-    └── mariadb.cnf           # MariaDB CDC configuration
+```bash
+# Stop and remove all containers and volumes
+docker compose down -v
+
+# Start fresh
+./startup.sh
 ```
 
-## Modernization Notes
+## 🚦 Health Checks
 
-This project has been updated from its original 2023 version with:
+### Verify All Services Running
 
-- ✅ Latest component versions (Flink 1.19.3, Iceberg 1.6.1)
-- ✅ MinIO replaces AWS S3 for independence
-- ✅ Custom Docker image approach (solves JAR classloader issues)
-- ✅ Simplified credential management
-- ✅ Working end-to-end data pipeline
-- ✅ Comprehensive verification steps
+```bash
+# Check all containers are healthy
+docker ps --format "table {{.Names}}\t{{.Status}}"
+```
 
-## Development
+### Test End-to-End Pipeline
 
-To modify the pipeline:
+```bash
+# Insert test data
+docker exec mariadb mysql -u root -prootpassword -e "
+  INSERT INTO mydatabase.products (name, price)
+  VALUES ('Health Check Product', 99.99);
+"
 
-1. Update SQL jobs in the `jobs/` directory
-2. Rebuild and restart: `docker compose down && docker compose build --no-cache && docker compose up -d`
-3. Test with verification commands above
+# Wait a few seconds, then verify in Iceberg
+docker exec -it trino trino -e "
+  SELECT * FROM iceberg.my_database.my_products
+  WHERE name = 'Health Check Product';
+"
+```
+
+## 📈 Performance Tuning
+
+### Flink Optimization
+- Increase checkpoint interval in `jobs/job.sql` for better throughput
+- Adjust taskmanager memory in `docker-compose.yml`
+
+### Trino Optimization
+- Scale coordinator and workers separately
+- Configure memory limits based on workload
+
+### MinIO Optimization
+- Use multiple drives for better I/O
+- Enable erasure coding for redundancy
+
+## 🤝 Contributing
+
+Contributions are welcome! Areas for improvement:
+- Additional data sources and sinks
+- Custom Flink operators
+- Enhanced Superset dashboards
+- Kubernetes deployment manifests
+- Terraform/Pulumi infrastructure as code
+- Additional data quality checks
+- Performance benchmarks
+
+## 📚 Learn More
+
+### Documentation
+- [Apache Flink](https://flink.apache.org/)
+- [Apache Iceberg](https://iceberg.apache.org/)
+- [Trino](https://trino.io/)
+- [Apache Superset](https://superset.apache.org/)
+- [Soda Core](https://docs.soda.io/soda-core/)
+- [Grafana Loki](https://grafana.com/oss/loki/)
+
+### Related Topics
+- Change Data Capture (CDC)
+- Data Lakehouse Architecture
+- Stream Processing
+- ACID Transactions in Data Lakes
+- Data Quality Engineering
+- Observability in Data Platforms
+
+## 📄 License
+
+This project is open source and available under the MIT License.
+
+## 🙏 Acknowledgments
+
+Built with best-in-class open source technologies from:
+- Apache Software Foundation
+- Trino Software Foundation
+- MinIO, Inc.
+- Grafana Labs
+- Soda Data
+
+---
+
+**Ready to explore modern data architecture?** Start with `./startup.sh` and watch your data flow! 🌊

@@ -1,64 +1,90 @@
 services:
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: minio
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password123
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio_data:/data
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
     command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [ "minio-data:/data" ]
 
-  mariadb:
-    image: mariadb:10.6.14
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+  mc:
+    image: quay.io/minio/mc:latest
+    container_name: mc
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh","/create-bucket.sh"]
     volumes:
-      - ./sql/mariadb.cnf:/etc/mysql/mariadb.conf.d/mariadb.cnf
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "3306:3306"
+      - ./minio/create-bucket.sh:/create-bucket.sh:ro
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpw
+    command: >
+      --server-id=1 --log-bin=mysql-bin --binlog_format=ROW --binlog_row_image=FULL
+      --gtid_mode=ON --enforce_gtid_consistency=ON
+      --default_authentication_plugin=mysql_native_password
+    ports: ["3306:3306"]
+    volumes:
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
 
   jobmanager:
     build: .
     container_name: jobmanager
     environment:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=password123
-      - AWS_ENDPOINT=http://minio:9000
-      - AWS_PATH_STYLE_ACCESS=true
-    ports:
-      - "8081:8081"
+      - AWS_REGION=us-east-1
     command: jobmanager
+    ports: ["8081:8081"]
     volumes:
-      - ./jobs/job.sql:/opt/flink/job.sql
+      - ./jobs/job.sql:/opt/flink/job.sql:ro
+      - ./jobs/products_streaming.sql:/opt/flink/products_streaming.sql:ro
+      - ./jobs/sales_streaming.sql:/opt/flink/sales_streaming.sql:ro
     depends_on:
+      - mysql
       - minio
-    deploy:
-          replicas: 1
+
   taskmanager:
     build: .
     environment:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=password123
-      - AWS_ENDPOINT=http://minio:9000
-      - AWS_PATH_STYLE_ACCESS=true
+      - AWS_REGION=us-east-1
+    command: taskmanager
     depends_on:
       - jobmanager
+      - mysql
       - minio
-    command: taskmanager
     deploy:
-          replicas: 2
+      replicas: 2
+
+  trino:
+    image: trinodb/trino:477
+    container_name: trino
+    ports: ["8080:8080"]
+    volumes:
+      - ./trino/etc/catalog:/etc/trino/catalog:ro
+      - ./trino/lib/mysql-connector-j-8.4.0.jar:/usr/lib/trino/plugin/iceberg/mysql-connector-j-8.4.0.jar:ro
+
+  superset:
+    image: apache/superset:3.1.0
+    container_name: superset
+    depends_on: [ trino ]
+    ports: ["8088:8088"]
+    environment:
+      SUPERSET_SECRET_KEY: "superset-secret"
+      ADMIN_USERNAME: "admin"
+      ADMIN_FIRST_NAME: "Admin"
+      ADMIN_LAST_NAME: "User"
+      ADMIN_EMAIL: "admin@example.com"
+      ADMIN_PASSWORD: "admin"
+      SUPERSET_PORT: "8088"
+      GUNICORN_CMD_ARGS: "--bind 0.0.0.0:8088 --workers 2 --timeout 120 --keep-alive 2"
+    entrypoint: ["/bin/sh","/docker-entrypoint.sh"]
+    volumes:
+      - ./superset/docker-entrypoint.sh:/docker-entrypoint.sh:ro
 
 volumes:
-  minio_data:
+  minio-data:
