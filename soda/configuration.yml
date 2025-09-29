@@ -1,0 +1,8 @@
+data_source trino:
+  type: trino
+  host: trino
+  port: 8080
+  catalog: iceberg
+  schema: demo
+  user: soda
+  http_scheme: http

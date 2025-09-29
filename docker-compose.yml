@@ -86,5 +86,16 @@ services:
     volumes:
       - ./superset/docker-entrypoint.sh:/docker-entrypoint.sh:ro
 
+  soda:
+    build: ./soda
+    container_name: soda
+    depends_on: [ trino ]
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./soda:/soda:ro
+    restart: unless-stopped
+    working_dir: /soda
+
 volumes:
   minio-data:

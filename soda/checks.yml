@@ -1,0 +1,90 @@
+# Data Quality Checks for Products Table
+checks for products:
+  # Ensure products table is not empty
+  - row_count > 0:
+      name: Products table has data
+      
+  # Ensure no null IDs (primary key integrity)
+  - missing_count(id) = 0:
+      name: Product ID cannot be null
+      
+  # Ensure no null SKUs (business key integrity)
+  - missing_count(sku) = 0:
+      name: Product SKU cannot be null
+      
+  # Ensure no null names
+  - missing_count(name) = 0:
+      name: Product name cannot be null
+      
+  # Ensure SKUs are unique (business rule)
+  - duplicate_count(sku) = 0:
+      name: Product SKU must be unique
+      
+  # Ensure IDs are unique (primary key)
+  - duplicate_count(id) = 0:
+      name: Product ID must be unique
+      
+  # SKU format validation (should start with 'P-')
+  - invalid_count(sku) = 0:
+      valid regex: ^P-\d{3}$
+      name: SKU follows correct format (P-XXX)
+
+# Data Quality Checks for Sales Table  
+checks for sales:
+  # Ensure sales table is not empty
+  - row_count > 0:
+      name: Sales table has data
+      
+  # Ensure no null sale IDs
+  - missing_count(id) = 0:
+      name: Sale ID cannot be null
+      
+  # Ensure no null product references
+  - missing_count(product_id) = 0:
+      name: Product ID reference cannot be null
+      
+  # Ensure no null quantities
+  - missing_count(qty) = 0:
+      name: Quantity cannot be null
+      
+  # Ensure no null prices
+  - missing_count(price) = 0:
+      name: Price cannot be null
+      
+  # Ensure no null timestamps
+  - missing_count(sale_ts) = 0:
+      name: Sale timestamp cannot be null
+      
+  # Business rule: quantities should be positive
+  - invalid_count(qty) = 0:
+      valid min: 1
+      name: Quantity must be positive
+      
+  # Business rule: prices should be positive
+  - invalid_count(price) = 0:
+      valid min: 0.01
+      name: Price must be positive
+      
+  # Business rule: quantities should be reasonable (not too high)
+  - invalid_count(qty) = 0:
+      valid max: 100
+      name: Quantity should be reasonable (max 100)
+      
+  # Business rule: prices should be reasonable (not too high)
+  - invalid_count(price) = 0:
+      valid max: 10000.00
+      name: Price should be reasonable (max $10,000)
+      
+  # Ensure sale IDs are unique
+  - duplicate_count(id) = 0:
+      name: Sale ID must be unique
+      
+  # Data freshness: ensure recent sales exist (within last 24 hours)
+  - row_count > 0:
+      filter: sale_ts >= current_timestamp - interval '24' hour
+      name: Recent sales exist (within 24 hours)
+      
+  # Referential integrity: product_id should exist in products table
+  - invalid_count(product_id) = 0:
+      valid values: [1, 2, 3, 4]
+      name: Product ID must reference valid product
