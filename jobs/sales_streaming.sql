@@ -1,3 +1,7 @@
+-- Enable streaming execution mode
+SET 'execution.runtime-mode' = 'streaming';
+SET 'execution.checkpointing.interval' = '60s';
+
 -- Iceberg JDBC catalog on MySQL; data in MinIO via S3FileIO
 CREATE CATALOG lake WITH (
   'type' = 'iceberg',
@@ -15,28 +19,10 @@ CREATE CATALOG lake WITH (
 );
 
 USE CATALOG lake;
-CREATE DATABASE IF NOT EXISTS demo;
 USE demo;
 
--- CDC sources with streaming configuration
-CREATE TABLE mysql_products (
-  id INT,
-  sku STRING,
-  name STRING,
-  PRIMARY KEY (id) NOT ENFORCED
-) WITH (
-  'connector' = 'mysql-cdc',
-  'hostname' = 'mysql',
-  'port' = '3306',
-  'username' = 'root',
-  'password' = 'rootpw',
-  'database-name' = 'appdb',
-  'table-name' = 'products',
-  'scan.incremental.snapshot.enabled' = 'true',
-  'scan.startup.mode' = 'initial'
-);
-
-CREATE TABLE mysql_sales (
+-- CDC source for sales
+CREATE TEMPORARY TABLE mysql_sales_stream (
   id BIGINT,
   product_id INT,
   qty INT,
@@ -55,23 +41,6 @@ CREATE TABLE mysql_sales (
   'scan.startup.mode' = 'initial'
 );
 
--- Iceberg targets
-CREATE TABLE IF NOT EXISTS products (
-  id INT,
-  sku STRING,
-  name STRING,
-  PRIMARY KEY (id) NOT ENFORCED
-);
-
-CREATE TABLE IF NOT EXISTS sales (
-  id BIGINT,
-  product_id INT,
-  qty INT,
-  price DECIMAL(10,2),
-  sale_ts TIMESTAMP(3),
-  PRIMARY KEY (id) NOT ENFORCED
-);
-
--- Stream into Iceberg
-INSERT INTO products SELECT id, sku, name FROM mysql_products;
-INSERT INTO sales    SELECT id, product_id, qty, price, sale_ts FROM mysql_sales;
+-- Stream sales to Iceberg (this will run continuously)
+INSERT INTO sales
+SELECT id, product_id, qty, price, sale_ts FROM mysql_sales_stream;
